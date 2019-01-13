@@ -1,7 +1,10 @@
-var mysql = require("mysql");
-var inquirer = require("inquirer");
+//declare NPM packages
+const mysql = require("mysql");
+const inquirer = require("inquirer");
+const cTable = require('console.table');
 
-var connection = mysql.createConnection({
+//set up SQL connection
+const connection = mysql.createConnection({
     host: "localhost",
 
     // Your port; if not 3306
@@ -17,11 +20,15 @@ var connection = mysql.createConnection({
 
 connection.connect(function (err) {
     if (err) throw err;
-    runSearch();
+    connection.query('SELECT * FROM products', function (err, res) {
+        console.table(res);
+        runSearch();
+    });
 });
 
 //   create function that asks which product and how many customer wants to buy
 function runSearch() {
+
     inquirer.prompt([
         {
             name: "action",
@@ -34,31 +41,30 @@ function runSearch() {
             message: "How many would you like to purchase?",
         }
     ])
-    .then(function (answer) {
-        var productID = answer.action;
-        var purchaseQuantity = answer.quantity;
-        var query = 'SELECT * FROM products WHERE ?';
-        connection.query(query, {item_id:answer.action}, function (err, res) {
+        .then(function (answer) {
+            var productID = answer.action;
+            var purchaseQuantity = answer.quantity;
+            var query = 'SELECT * FROM products WHERE ?';
+            connection.query(query, { item_id: answer.action }, function (err, res) {
 
-            if (purchaseQuantity <= res[0].stock_quantity) {
-                console.log("Your product is in stock!");
-            }
+                if (purchaseQuantity <= res[0].stock_quantity) {
+                    console.log("Your product is in stock! The order is being placed now.");
+                    // if enough, fulfill the order. Update SQL database and show total cost of purchase
+                    // Add a console table to improve visual output
 
-            else if (purchaseQuantity > res[0].stock_quantity) {
-                console.log("Insufficient quantity!")
-            }
-
-                });
+                    var updateQuery = 'UPDATE products SET stock_quantity ='+ (res[0].stock_quantity-purchaseQuantity) + ' WHERE item_id = '+ (productID);
+                    connection.query(updateQuery, function (err, res) {
+                    });
+                    var totalCost = purchaseQuantity * res[0].price;
+                    console.log("The total cost of your purchase is:" + totalCost);
+                    
+                }
+                // )}
+                else {
+                    console.log("Insufficient quantity!");
+            
+                }
             });
-}
+        });
+};
 
-//   create function to check if store has enough product, if not enough product, prevent order w/ "insufficient qty"
-function productAvailability() {
-
-
-}
-
-// if enough, fulfill the order. Update SQL database and show total cost of purchase
-function productSufficiency() {
-
-}
